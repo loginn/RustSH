@@ -1,4 +1,3 @@
-use std::io;
 mod cd;
 mod launch_bin;
 mod env;
@@ -7,7 +6,6 @@ fn command_parser(mut command_vector : Vec<&str>) {
     use cd::cd;
     use launch_bin::launch_bin;
     use env::{env, setenv, unsetenv};
-
 
     match command_vector[0].trim() {
         "cd"        => cd(&command_vector),
@@ -19,7 +17,14 @@ fn command_parser(mut command_vector : Vec<&str>) {
 }
 
 fn main_loop() {
+    use std::io;
+    use std::io::Write;
+    use std::env;
+
     let mut command = String::new();
+    let dir = env::current_dir().unwrap();
+    print!("{} > ", dir.display());
+    io::stdout().flush().unwrap();
     while io::stdin().read_line(&mut command).unwrap() > 0
     {
         {
@@ -27,6 +32,9 @@ fn main_loop() {
             command_parser(command_vector);
         }
         command.clear();
+        let dir = env::current_dir().unwrap();
+        print!("{} > ", dir.display());
+        io::stdout().flush().unwrap();
     }
 }
 
