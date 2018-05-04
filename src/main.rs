@@ -28,6 +28,7 @@ fn main_loop() {
     while io::stdin().read_line(&mut command).unwrap() > 0
     {
         {
+            command.pop();
             let command_vector = command.split(" ").collect::<Vec<&str>>();
             command_parser(command_vector);
         }

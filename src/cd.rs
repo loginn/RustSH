@@ -3,15 +3,15 @@ use std::path;
 
 fn change_directory(path: &path::PathBuf) {
     match env::set_current_dir(path) {
-        Err(err) => println!("Error : {}, {}", err, path.to_str().unwrap()),
-        Ok(_) => println!("Success : {}", path.to_str().unwrap())
+        Err(err) => println!("Error : {}, {:?}", err, path),
+        Ok(_) => {}
     }
 }
 
 fn build_new_path(command_path: &str) -> Option<path::PathBuf> {
     let mut desired_path = path::PathBuf::new();
     let user_path = path::PathBuf::from(command_path);
-    if !user_path.is_absolute() {
+    if user_path.is_relative() {
         let current_path = env::current_dir();
         match current_path {
             Ok(n) => {
