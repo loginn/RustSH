@@ -14,8 +14,8 @@ fn build_new_path(command_path: &str) -> Option<path::PathBuf> {
     if user_path.is_relative() {
         let current_path = env::current_dir();
         match current_path {
-            Ok(n) => {
-                desired_path.push(n);
+            Ok(p) => {
+                desired_path.push(p);
                 desired_path.push(user_path);
             },
             Err(e) => {
