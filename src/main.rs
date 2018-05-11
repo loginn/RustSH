@@ -32,8 +32,9 @@ fn print_prompt() {
 }
 
 fn clean_cmd(cmd: &mut String) -> String {
-    if cmd.chars().last().unwrap() == '\n' {
-        cmd.pop();
+    match cmd.chars().last() {
+        Some(c) => {if c == '\n' { cmd.pop(); }},
+        _ => {}
     }
     return cmd.trim().to_string();
 }
@@ -54,10 +55,10 @@ fn main_loop() {
     let mut command = String::new();
 
     while std::io::stdin().read_line(&mut command).unwrap() > 0
-    {
-        get_command_vector(&mut command);
-        command.clear();
-    }
+        {
+            get_command_vector(&mut command);
+            command.clear();
+        }
 }
 
 fn main() {
