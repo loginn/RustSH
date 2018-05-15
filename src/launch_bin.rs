@@ -1,9 +1,7 @@
 use std::process::Command;
 
-pub fn launch_bin(command_vector: &mut Vec<&str>)
-{
-    let program_string = command_vector[0];
-    let mut process = Command::new(program_string.trim());
+pub fn launch_bin(command_vector: &mut Vec<String>) -> i32 {
+    let mut process = Command::new(&command_vector[0].trim());
 
     command_vector.remove(0);
     for val in command_vector {
@@ -11,8 +9,9 @@ pub fn launch_bin(command_vector: &mut Vec<&str>)
     }
     let child = process.spawn().ok();
     if child.is_none() {
-        println!("Couldn't launch process: {}", program_string)
+        println!("Couldn't launch process: {:?}", process);
+        return 1;
     } else {
-        child.unwrap().wait().unwrap();
+        return child.unwrap().wait().unwrap().code().unwrap();
     }
 }

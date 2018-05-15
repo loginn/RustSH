@@ -1,10 +1,10 @@
 use std::env;
 use std::path;
 
-fn change_directory(path: &path::PathBuf) {
+fn change_directory(path: &path::PathBuf) -> i32 {
     match env::set_current_dir(path) {
-        Err(err) => println!("Error : {}, {:?}", err, path),
-        Ok(_) => {}
+        Err(err) => {println!("Error : {}, {:?}", err, path); return 1},
+        Ok(_) => {return 0}
     }
 }
 
@@ -29,18 +29,19 @@ fn build_new_path(command_path: &str) -> Option<path::PathBuf> {
     return Some(desired_path)
 }
 
-pub fn cd (command_vector: &Vec<&str> ) {
+pub fn cd (command_vector: &Vec<String> ) -> i32 {
     if command_vector.len() == 2 {
         match build_new_path(&command_vector[1]) {
-            Some(n) => change_directory(&n),
-            None => return
+            Some(n) => return change_directory(&n),
+            None => return 1
         }
     } else if command_vector.len() == 1 {
         match env::home_dir() {
             Some(n) => change_directory(&n),
-            None => println!("No known home directory")
+            None => {println!("No known home directory"); return 1}
         }
     } else {
         println!("Error : Invalid path");
+        return 1
     }
 }

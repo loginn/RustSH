@@ -1,21 +1,7 @@
 mod cd;
 mod launch_bin;
 mod env;
-
-fn command_parser(mut command_vector : Vec<&str>) {
-    use cd::cd;
-    use launch_bin::launch_bin;
-    use env::{env, setenv, unsetenv};
-
-    match command_vector[0].trim() {
-        "cd"        => cd(&command_vector),
-        "env"       => env(),
-        "setenv"    => setenv(&mut command_vector),
-        "unsetenv"  => unsetenv(&mut command_vector),
-        ""          => {},
-        _           => launch_bin(&mut command_vector)
-    }
-}
+mod command_handler;
 
 fn print_prompt() {
     use std::io;
@@ -31,34 +17,14 @@ fn print_prompt() {
     }
 }
 
-fn clean_cmd(cmd: &mut String) -> String {
-    match cmd.chars().last() {
-        Some(c) => {if c == '\n' { cmd.pop(); }},
-        _ => {}
-    }
-    return cmd.trim().to_string();
-}
-
-fn get_command_vector(command: &mut String) {
-    let all_commands = command.split(";").map(|x: &str| x.to_string()).collect::<Vec<String>>();
-    for mut cmd in all_commands {
-        {
-            cmd = clean_cmd(&mut cmd);
-            let cmd_vector = cmd.split(" ").collect::<Vec<&str>>();
-            command_parser(cmd_vector);
-        }
-    }
-    print_prompt();
-}
-
 fn main_loop() {
     let mut command = String::new();
 
-    while std::io::stdin().read_line(&mut command).unwrap() > 0
-        {
-            get_command_vector(&mut command);
-            command.clear();
-        }
+    while std::io::stdin().read_line(&mut command).unwrap() > 0 {
+        command_handler::handle_command(&mut command);
+        command.clear();
+        print_prompt();
+    }
 }
 
 fn main() {
