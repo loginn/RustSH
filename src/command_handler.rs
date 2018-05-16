@@ -1,11 +1,17 @@
 extern crate regex;
 
 #[derive(Debug)]
-enum CommandOperator {
+pub enum CommandOperator {
     AND,
     OR,
     ALWAYS,
     PIPE
+}
+
+#[derive(Debug)]
+pub struct CommandResult {
+    pub status: i32,
+    pub output: Option<String>
 }
 
 #[derive(Debug)]
@@ -57,7 +63,7 @@ fn get_all_commands(command: &String) -> Vec<Command>{
     return commands;
 }
 
-fn command_parser(mut command_vector : Vec<String>) -> i32 {
+fn command_parser(mut command_vector : Vec<String>, operator: &CommandOperator, input: Option<String>) -> CommandResult {
     use cd::cd;
     use launch_bin::launch_bin;
     use env::{env, setenv, unsetenv};
@@ -67,21 +73,37 @@ fn command_parser(mut command_vector : Vec<String>) -> i32 {
         "env"       => return env(),
         "setenv"    => return setenv(&mut command_vector),
         "unsetenv"  => return unsetenv(&mut command_vector),
-        ""          => {return 0},
-        _           => return launch_bin(&mut command_vector)
+        ""          => {return CommandResult {status: 0, output: None}},
+        _           => return launch_bin(&mut command_vector, operator, input)
     }
 }
 
 pub fn handle_command(command: &mut String) {
-    let mut status: i32 = 0;
+    let mut cmd_result: CommandResult = CommandResult {status: 0, output: None};
     let all_commands: Vec<Command> = get_all_commands(command);
     let mut operator = CommandOperator::ALWAYS;
 
     for mut cmd in all_commands {
         match operator {
-            CommandOperator::AND => if status != 0 { return } else { status = command_parser(cmd.command) },
-            CommandOperator::OR  => if status == 0 { return } else { status = command_parser(cmd.command) },
-            _ => { status = command_parser(cmd.command) }
+            CommandOperator::AND => {
+                if cmd_result.status != 0 {
+                    return
+                } else {
+                    cmd_result = command_parser(cmd.command, &cmd.command_operator,cmd_result.output)
+                }
+            },
+
+            CommandOperator::OR  => {
+                if cmd_result.status == 0 {
+                    return
+                } else {
+                    cmd_result = command_parser(cmd.command, &cmd.command_operator,cmd_result.output)
+                }
+            },
+
+            _ => {
+                cmd_result = command_parser(cmd.command, &cmd.command_operator,cmd_result.output)
+            }
         }
         operator = cmd.command_operator;
     }

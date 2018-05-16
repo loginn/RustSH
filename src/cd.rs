@@ -1,5 +1,6 @@
 use std::env;
 use std::path;
+use command_handler::CommandResult;
 
 fn change_directory(path: &path::PathBuf) -> i32 {
     match env::set_current_dir(path) {
@@ -29,19 +30,22 @@ fn build_new_path(command_path: &str) -> Option<path::PathBuf> {
     return Some(desired_path)
 }
 
-pub fn cd (command_vector: &Vec<String> ) -> i32 {
+pub fn cd (command_vector: &Vec<String> ) -> CommandResult {
     if command_vector.len() == 2 {
         match build_new_path(&command_vector[1]) {
-            Some(n) => return change_directory(&n),
-            None => return 1
+            Some(n) => return CommandResult {status: change_directory(&n), output: None},
+            None => return CommandResult {status: 1, output: None}
         }
     } else if command_vector.len() == 1 {
         match env::home_dir() {
-            Some(n) => change_directory(&n),
-            None => {println!("No known home directory"); return 1}
+            Some(n) => CommandResult {status: change_directory(&n), output: None},
+            None => {
+                println!("No known home directory");
+                return CommandResult {status: 1, output: None}
+            }
         }
     } else {
         println!("Error : Invalid path");
-        return 1
+        return CommandResult {status: 1, output: None}
     }
 }
