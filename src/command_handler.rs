@@ -4,7 +4,8 @@ extern crate regex;
 enum CommandOperator {
     AND,
     OR,
-    ALWAYS
+    ALWAYS,
+    PIPE
 }
 
 #[derive(Debug)]
@@ -23,42 +24,35 @@ fn clean_cmd(mut cmd: String) -> String {
 
 fn get_all_commands(command: &String) -> Vec<Command>{
     let mut commands: Vec<Command> = vec![];
-    let mut i = 0;
-    let re= regex::Regex::new(r";|&&|\|\|").unwrap();
+    let re= regex::Regex::new(r";|&&|\|\||\|").unwrap();
     let mut caps = re.captures_iter(command);
 
     for mut part in re.split(command) {
         let cmd: String = clean_cmd(part.to_string());
-        let cmd_vector = cmd.split(" ").map(|x| x.to_string()).collect::<Vec<String>>();
-        if i == 0 {
-            commands.push(Command {
-                command: cmd_vector,
-                command_operator: CommandOperator::ALWAYS
-            })
-        } else {
-            commands.push(Command {
-                command: cmd_vector,
-                command_operator:
-                match caps.next() {
-                    Some(t) => {
-                        let m = t.get(0).unwrap().as_str();
-                        if m == ";" {
-                            CommandOperator::ALWAYS
-                        } else if m == "&&" {
-                            CommandOperator::AND
-                        } else if m == "||" {
-                            CommandOperator::OR
-                        } else {
-                            CommandOperator::ALWAYS
-                        }
-                    },
-                    _ => {
+        let cmd_vector = cmd.split(" ").map(|x: &str| x.to_string()).collect::<Vec<String>>();
+        commands.push(Command {
+            command: cmd_vector,
+            command_operator:
+            match caps.next() {
+                Some(t) => {
+                    let m = t.get(0).unwrap().as_str();
+                    if m == ";" {
+                        CommandOperator::ALWAYS
+                    } else if m == "&&" {
+                        CommandOperator::AND
+                    } else if m == "||" {
+                        CommandOperator::OR
+                    } else if m == "|" {
+                        CommandOperator::PIPE
+                    } else {
                         CommandOperator::ALWAYS
                     }
+                },
+                _ => {
+                    CommandOperator::ALWAYS
                 }
-            });
-        }
-        i += 1
+            }
+        });
     }
     return commands;
 }
@@ -81,11 +75,14 @@ fn command_parser(mut command_vector : Vec<String>) -> i32 {
 pub fn handle_command(command: &mut String) {
     let mut status: i32 = 0;
     let all_commands: Vec<Command> = get_all_commands(command);
+    let mut operator = CommandOperator::ALWAYS;
+
     for mut cmd in all_commands {
-        match cmd.command_operator {
+        match operator {
             CommandOperator::AND => if status != 0 { return } else { status = command_parser(cmd.command) },
             CommandOperator::OR  => if status == 0 { return } else { status = command_parser(cmd.command) },
             _ => { status = command_parser(cmd.command) }
         }
+        operator = cmd.command_operator;
     }
 }
