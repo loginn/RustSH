@@ -4,7 +4,7 @@ extern crate regex;
 pub enum CommandOperator {
     AND,
     OR,
-    ALWAYS,
+    NONE,
     PIPE,
     RIGHT,
     LEFT
@@ -38,31 +38,23 @@ fn get_all_commands(command: &String) -> Vec<Command>{
     for mut part in re.split(command) {
         let cmd: String = clean_cmd(part.to_string());
         let cmd_vector = cmd.split(" ").map(|x: &str| x.to_string()).collect::<Vec<String>>();
+        let op = match caps.next() {
+            Some(t) => {t.get(0).unwrap().as_str()},
+            None => ""
+            };
+
+
         commands.push(Command {
             command: cmd_vector,
             command_operator:
-            match caps.next() {
-                Some(t) => {
-                    let m = t.get(0).unwrap().as_str();
-                    if m == ";" {
-                        CommandOperator::ALWAYS
-                    } else if m == "&&" {
-                        CommandOperator::AND
-                    } else if m == "||" {
-                        CommandOperator::OR
-                    } else if m == "|" {
-                        CommandOperator::PIPE
-                    } else if m == ">" {
-                        CommandOperator::RIGHT
-                    } else if m == "<" {
-                        CommandOperator::LEFT
-                    } else {
-                        CommandOperator::ALWAYS
-                    }
-                },
-                _ => {
-                    CommandOperator::ALWAYS
-                }
+            match op {
+                ";" => CommandOperator::NONE,
+                "&&" => CommandOperator::AND,
+                "||" => CommandOperator::OR,
+                "|" => CommandOperator::PIPE,
+                ">" => CommandOperator::RIGHT,
+                "<" => CommandOperator::LEFT,
+                _ => CommandOperator::NONE
             }
         });
     }
@@ -123,7 +115,8 @@ pub fn handle_command(command: &mut String) {
 
     let mut cmd_result: CommandResult = CommandResult {status: 0, output: None};
     let all_commands: Vec<Command> = get_all_commands(command);
-    let mut operator = CommandOperator::ALWAYS;
+    let mut operator = CommandOperator::NONE;
+    let mut idx = 0;
 
     for mut cmd in all_commands {
         match operator {
@@ -132,6 +125,7 @@ pub fn handle_command(command: &mut String) {
             CommandOperator::RIGHT => { handle_right(&mut cmd, &mut cmd_result); }
             _ => { cmd_result = command_parser(&mut cmd.command, &cmd.command_operator,&cmd_result.output); }
         }
+        idx += 1;
         operator = cmd.command_operator;
     }
 }
