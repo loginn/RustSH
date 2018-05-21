@@ -17,10 +17,14 @@ fn create_process(command_vector: &mut Vec<String>, operator: &CommandOperator, 
     if input.is_some() {
         process.stdin(Stdio::piped());
     }
+
     match *operator {
         CommandOperator::PIPE  => {
             process.stdout(Stdio::piped());
         },
+        CommandOperator::RIGHT => {
+            process.stdout(Stdio::piped());
+        }
         _ => {}
     }
 
@@ -28,7 +32,7 @@ fn create_process(command_vector: &mut Vec<String>, operator: &CommandOperator, 
     return process.spawn()
 }
 
-pub fn launch_bin(command_vector: &mut Vec<String>, operator: &CommandOperator, input: Option<String>) -> CommandResult {
+pub fn launch_bin(command_vector: &mut Vec<String>, operator: &CommandOperator, input: &Option<String>) -> CommandResult {
 
     let mut child = match create_process(command_vector, operator, &input) {
         Err(_e) => {
@@ -39,9 +43,14 @@ pub fn launch_bin(command_vector: &mut Vec<String>, operator: &CommandOperator, 
 
     match child.stdin {
         Some(ref mut stdin) => {
-            match stdin.write_all(input.unwrap().as_bytes()) {
-                Err(ref _why) => {},
-                Ok(ref _child) => {},
+            match input {
+                &Some(ref inp) => {
+                    match stdin.write_all(inp.as_bytes()) {
+                        Err(ref _why) => {},
+                        Ok(ref _child) => {},
+                    }
+                },
+                &None => {}
             }
         },
         None => {}

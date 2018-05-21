@@ -5,7 +5,9 @@ pub enum CommandOperator {
     AND,
     OR,
     ALWAYS,
-    PIPE
+    PIPE,
+    RIGHT,
+    LEFT
 }
 
 #[derive(Debug)]
@@ -30,7 +32,7 @@ fn clean_cmd(mut cmd: String) -> String {
 
 fn get_all_commands(command: &String) -> Vec<Command>{
     let mut commands: Vec<Command> = vec![];
-    let re= regex::Regex::new(r";|&&|\|\||\|").unwrap();
+    let re= regex::Regex::new(r";|&&|\|\||\||>|<").unwrap();
     let mut caps = re.captures_iter(command);
 
     for mut part in re.split(command) {
@@ -50,6 +52,10 @@ fn get_all_commands(command: &String) -> Vec<Command>{
                         CommandOperator::OR
                     } else if m == "|" {
                         CommandOperator::PIPE
+                    } else if m == ">" {
+                        CommandOperator::RIGHT
+                    } else if m == "<" {
+                        CommandOperator::LEFT
                     } else {
                         CommandOperator::ALWAYS
                     }
@@ -63,7 +69,7 @@ fn get_all_commands(command: &String) -> Vec<Command>{
     return commands;
 }
 
-fn command_parser(mut command_vector : Vec<String>, operator: &CommandOperator, input: Option<String>) -> CommandResult {
+fn command_parser(mut command_vector : &mut Vec<String>, operator: &CommandOperator, input: &Option<String>) -> CommandResult {
     use cd::cd;
     use launch_bin::launch_bin;
     use env::{env, setenv, unsetenv};
@@ -78,32 +84,53 @@ fn command_parser(mut command_vector : Vec<String>, operator: &CommandOperator, 
     }
 }
 
+fn handle_and(cmd: &mut Command, cmd_result: &mut CommandResult) {
+    if cmd_result.status != 0 {
+        return ;
+    } else {
+        *cmd_result = command_parser(&mut cmd.command, &cmd.command_operator,&cmd_result.output);
+    }
+}
+
+fn handle_or(cmd: &mut Command, cmd_result: &mut CommandResult) {
+    if cmd_result.status == 0 {
+        return;
+    } else {
+        *cmd_result = command_parser(&mut cmd.command, &cmd.command_operator,&cmd_result.output);
+    }
+}
+
+fn handle_right(cmd: &mut Command, cmd_result: &mut CommandResult) {
+    use std::fs::File;
+    use std::io::prelude::*;
+
+    let mut f = match File::create(&cmd.command[0]) {
+        Ok(file) => {file},
+        Err(e) => {println!("Could not open file : {}", e); return ;}
+    };
+    match &cmd_result.output {
+        &Some(ref output) => {
+            match f.write_all(output.as_bytes()) {
+                Ok(_) => {},
+                Err(e) => {println!("Error writing to file : {}", e);}
+            };
+        },
+        &None => {}
+    }
+}
+
 pub fn handle_command(command: &mut String) {
+
     let mut cmd_result: CommandResult = CommandResult {status: 0, output: None};
     let all_commands: Vec<Command> = get_all_commands(command);
     let mut operator = CommandOperator::ALWAYS;
 
     for mut cmd in all_commands {
         match operator {
-            CommandOperator::AND => {
-                if cmd_result.status != 0 {
-                    return
-                } else {
-                    cmd_result = command_parser(cmd.command, &cmd.command_operator,cmd_result.output)
-                }
-            },
-
-            CommandOperator::OR  => {
-                if cmd_result.status == 0 {
-                    return
-                } else {
-                    cmd_result = command_parser(cmd.command, &cmd.command_operator,cmd_result.output)
-                }
-            },
-
-            _ => {
-                cmd_result = command_parser(cmd.command, &cmd.command_operator,cmd_result.output)
-            }
+            CommandOperator::AND => { handle_and(&mut cmd, &mut cmd_result); },
+            CommandOperator::OR  => { handle_or(&mut cmd, &mut cmd_result); },
+            CommandOperator::RIGHT => { handle_right(&mut cmd, &mut cmd_result); }
+            _ => { cmd_result = command_parser(&mut cmd.command, &cmd.command_operator,&cmd_result.output); }
         }
         operator = cmd.command_operator;
     }
