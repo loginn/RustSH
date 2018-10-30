@@ -1,1 +1,4 @@
+Handle single redirections
+Handle double redirections
 Handle signals
+Handle pipes
