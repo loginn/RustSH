@@ -53,11 +53,11 @@ impl Interpreter {
     fn visit_binop(&self, node: Box<BinOp>) -> CommandResult {
         let n = *node;
         match n.token.kind {
-            TokenOperator::SEMI => {
+            TokenOperator::Semicolon => {
                 self.visit(n.left);
                 return self.visit(n.right);
-            },
-            TokenOperator::AND => {
+            }
+            TokenOperator::And => {
                 let cr1 = self.visit(n.left);
                 if cr1.status == 0 {
                     let cr2 = self.visit(n.right);
@@ -65,8 +65,8 @@ impl Interpreter {
                 } else {
                     CommandResult { child: None, status: cr1.status }
                 }
-            },
-            TokenOperator::OR => {
+            }
+            TokenOperator::Or => {
                 let cr1 = self.visit(n.left);
                 if cr1.status != 0 {
                     let cr2 = self.visit(n.right);

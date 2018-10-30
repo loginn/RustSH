@@ -15,12 +15,12 @@ impl Parser {
     pub fn new() -> Parser {
         Parser {
             lexer: Lexer::new(String::new()),
-            current_token: Token { kind: TokenOperator::START, value: None }
+            current_token: Token { kind: TokenOperator::Start, value: None }
         }
     }
 
     pub fn set_command(&mut self, command: String) {
-        self.current_token = Token { kind: TokenOperator::START, value: None };
+        self.current_token = Token { kind: TokenOperator::Start, value: None };
         self.lexer.set_command(command);
     }
 
@@ -36,8 +36,8 @@ impl Parser {
     fn factor(&mut self) -> Box<ASTNode> {
         let tok = self.current_token.clone();
         let result: Box<ASTNode> = match tok.kind {
-            TokenOperator::CMD  => {
-                match self.eat(TokenOperator::CMD) {
+            TokenOperator::Cmd => {
+                match self.eat(TokenOperator::Cmd) {
                     Ok(cmd) => {
                         if cmd.value.is_some() {
                             Box::new(Command::new(tok))
@@ -45,10 +45,10 @@ impl Parser {
                     }
                     _   => panic!("Error parsing in factor")
                 }
-            },
-            TokenOperator::EOF  => {
+            }
+            TokenOperator::Eof => {
                     Box::new(Eof { token: tok })
-            },
+            }
             _ => {
                 panic!("Unknown factor type {:?}", tok.kind)
             }
@@ -64,24 +64,24 @@ impl Parser {
     }
 
     pub fn check_token(&mut self) -> bool {
-        return self.current_token.kind == TokenOperator::SEMI || self.current_token.kind == TokenOperator::AND || self.current_token.kind == TokenOperator::OR;
+        return self.current_token.kind == TokenOperator::Semicolon || self.current_token.kind == TokenOperator::And || self.current_token.kind == TokenOperator::Or;
     }
 
     pub fn expr(&mut self) -> Box<ASTNode> {
-        if self.current_token.kind == TokenOperator::START {
-            Parser::pass(self.eat(TokenOperator::START));
+        if self.current_token.kind == TokenOperator::Start {
+            Parser::pass(self.eat(TokenOperator::Start));
         }
 
         let mut node: Box<ASTNode> = self.factor();
 
         while self.check_token() {
             let tok = self.current_token.clone();
-            if tok.kind == TokenOperator::SEMI {
-                Parser::pass(self.eat(TokenOperator::SEMI));
-            } else if tok.kind == TokenOperator::AND {
-                Parser::pass(self.eat(TokenOperator::AND));
-            } else if tok.kind == TokenOperator::OR {
-                Parser::pass(self.eat(TokenOperator::OR));
+            if tok.kind == TokenOperator::Semicolon {
+                Parser::pass(self.eat(TokenOperator::Semicolon));
+            } else if tok.kind == TokenOperator::And {
+                Parser::pass(self.eat(TokenOperator::And));
+            } else if tok.kind == TokenOperator::Or {
+                Parser::pass(self.eat(TokenOperator::Or));
             }
 
             node = Box::new(BinOp {

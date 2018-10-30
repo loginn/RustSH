@@ -7,7 +7,7 @@ pub enum TokenOperator {
     Pipe,
     SingleRight,
     SingleLeft,
-    Semi,
+    Semicolon,
     Eof
 }
 
@@ -56,7 +56,7 @@ impl Lexer {
         }
         result = result.trim().to_string();
         return Token {
-            kind: TokenOperator:: CMD,
+            kind: TokenOperator::Cmd,
             value: Some(result)
         }
     }
@@ -89,17 +89,20 @@ impl Lexer {
 
             if c == ';' {
                 self.advance();
-                return Token { kind: TokenOperator::SEMI, value: None }
+                return Token { kind: TokenOperator::Semicolon, value: None }
             } else if c == '|' && self.peek_check(c) {
                 self.advance();
                 self.advance();
-                return Token { kind: TokenOperator::OR, value: None }
+                return Token { kind: TokenOperator::Or, value: None }
             } else if c == '&' && self.peek_check(c) {
                 self.advance();
                 self.advance();
-                return Token { kind: TokenOperator::AND, value: None }
+                return Token { kind: TokenOperator::And, value: None }
             } else if c.is_alphabetic() {
                 return self.command();
+            } else if c == '>' {
+                self.advance();
+                return TokenOperator { kind: TokenOperator::SingleRight, value: None}
             } else {
                 panic!("Unknown token")
             }
