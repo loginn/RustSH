@@ -5,3 +5,4 @@ authors = ["Vincent Kurta <vincent.kurta@epitech.eu>"]
 
 [dependencies]
 regex = "1.0.0"
+downcast-rs = "1.0.3"

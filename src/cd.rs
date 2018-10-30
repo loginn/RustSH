@@ -33,19 +33,19 @@ fn build_new_path(command_path: &str) -> Option<path::PathBuf> {
 pub fn cd (command_vector: &Vec<String> ) -> CommandResult {
     if command_vector.len() == 2 {
         match build_new_path(&command_vector[1]) {
-            Some(n) => return CommandResult {status: change_directory(&n), output: None},
-            None => return CommandResult {status: 1, output: None}
+            Some(n) => return CommandResult { child: None, status: change_directory(&n) },
+            None => return CommandResult { child: None, status: 1 }
         }
     } else if command_vector.len() == 1 {
         match env::home_dir() {
-            Some(n) => CommandResult {status: change_directory(&n), output: None},
+            Some(n) => CommandResult { child: None, status: change_directory(&n) },
             None => {
                 println!("No known home directory");
-                return CommandResult {status: 1, output: None}
+                return CommandResult { child: None, status: 1 }
             }
         }
     } else {
         println!("Error : Invalid path");
-        return CommandResult {status: 1, output: None}
+        return CommandResult { child: None, status: 1 }
     }
 }
