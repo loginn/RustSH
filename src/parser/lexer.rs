@@ -1,14 +1,14 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum TokenOperator {
-    START,
-    CMD,
-    AND,
-    OR,
-    PIPE,
-    RIGHT,
-    LEFT,
-    SEMI,
-    EOF
+    Start,
+    Cmd,
+    And,
+    Or,
+    Pipe,
+    SingleRight,
+    SingleLeft,
+    Semi,
+    Eof
 }
 
 #[derive(Debug, Clone)]
