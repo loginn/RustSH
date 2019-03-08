@@ -1,6 +1,6 @@
 #[macro_use]
 extern crate downcast_rs;
-
+extern crate signal_hook;
 extern crate regex;
 
 mod cd;
@@ -12,6 +12,9 @@ mod interpreter;
 
 use interpreter::Interpreter;
 use parser::parser::Parser;
+use std::thread;
+use signal_hook::iterator::Signals;
+use std::error::Error;
 
 fn print_prompt() {
     use std::io;
@@ -41,9 +44,19 @@ fn main_loop() {
     }
 }
 
-fn main() {
+fn main() -> Result<(), Box<Error>> {
+    let signals = Signals::new(&[signal_hook::SIGINT])?;
+
+    thread::spawn(move || {
+        for _ in signals.forever() {
+            println!();
+            print_prompt();
+        }
+    });
+
+
     print_prompt();
     main_loop();
     println!();
-    return ;
+    return Ok(());
 }
