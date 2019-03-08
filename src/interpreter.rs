@@ -42,12 +42,12 @@ impl Interpreter {
     fn visit_command(&self, node: Box<Command>, stdin: Option<Stdio>, stdout: Option<Stdio>) -> CommandResult {
         let mut cmd: Vec<String> = node.value.clone().split(' ').map(|x: &str| x.to_string()).collect();
 
-        let result = match cmd.as_str() {
-            "cd"        => cd(&cmd.split(' ').map(|x: &str| x.to_string()).collect()),
+        let result = match cmd[0].as_str() {
+            "cd"        => cd(&mut cmd),
             "env"       => env(),
-            "setenv"    => setenv(&mut cmd.split(' ').map(|x: &str| x.to_string()).collect()),
-            "unsetenv"  => unsetenv(&mut cmd.split(' ').map(|x: &str| x.to_string()).collect()),
-            _           => launch_bin(&mut cmd.split(' ').map(|x: &str| x.to_string()).collect())
+            "setenv"    => setenv(&mut cmd),
+            "unsetenv"  => unsetenv(&mut cmd),
+            _           => launch_bin(&mut cmd, stdin, stdout)
         };
         return result
     }
