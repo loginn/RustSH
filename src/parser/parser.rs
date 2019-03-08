@@ -68,6 +68,7 @@ impl Parser {
             || self.current_token.kind == TokenOperator::And
             || self.current_token.kind == TokenOperator::Or
             || self.current_token.kind == TokenOperator::SingleRight
+            || self.current_token.kind == TokenOperator::DoubleRight
             || self.current_token.kind == TokenOperator::SingleLeft;
     }
 
@@ -88,6 +89,8 @@ impl Parser {
                 Parser::pass(self.eat(TokenOperator::Or));
             } else if tok.kind == TokenOperator::SingleRight {
                 Parser::pass(self.eat(TokenOperator::SingleRight));
+            } else if tok.kind == TokenOperator::DoubleRight{
+                Parser::pass(self.eat(TokenOperator::DoubleRight));
             } else if tok.kind == TokenOperator::SingleLeft {
                 Parser::pass(self.eat(TokenOperator::SingleLeft));
             }

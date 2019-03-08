@@ -7,6 +7,7 @@ pub enum TokenOperator {
     Pipe,
     SingleRight,
     SingleLeft,
+    DoubleRight,
     Semicolon,
     Eof
 }
@@ -103,6 +104,10 @@ impl Lexer {
             } else if c == '>' && !self.peek_check(c) {
                 self.advance();
                 return Token { kind: TokenOperator::SingleRight, value: None}
+            } else if c == '>' && self.peek_check(c) {
+                self.advance();
+                self.advance();
+                return Token { kind: TokenOperator::DoubleRight, value: None}
             } else if c == '<' && !self.peek_check(c) {
                 self.advance();
                 return Token { kind: TokenOperator::SingleLeft, value: None}
