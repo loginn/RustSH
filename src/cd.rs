@@ -1,3 +1,5 @@
+extern crate dirs;
+
 use std::env;
 use std::path;
 use command_handler::CommandResult;
@@ -37,7 +39,7 @@ pub fn cd (command_vector: &Vec<String> ) -> CommandResult {
             None => return CommandResult { child: None, status: 1 }
         }
     } else if command_vector.len() == 1 {
-        match env::home_dir() {
+        match dirs::home_dir() {
             Some(n) => CommandResult { child: None, status: change_directory(&n) },
             None => {
                 println!("No known home directory");
