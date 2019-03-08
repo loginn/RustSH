@@ -100,16 +100,20 @@ impl Lexer {
                 self.advance();
                 self.advance();
                 return Token { kind: TokenOperator::And, value: None }
-            } else if c.is_alphabetic() {
-                return self.command();
-            } else if c == '>' {
+            } else if c == '>' && !self.peek_check(c) {
                 self.advance();
-                return TokenOperator { kind: TokenOperator::SingleRight, value: None}
+                return Token { kind: TokenOperator::SingleRight, value: None}
+            } else if c == '<' && !self.peek_check(c) {
+                self.advance();
+                return Token { kind: TokenOperator::SingleLeft, value: None}
+            } else if c == '|' && !self.peek_check(c) {
+                self.advance();
+                return Token { kind: TokenOperator::Pipe, value: None}
             } else {
-                panic!("Unknown token")
+                panic!("Unknown token {}", c)
             }
         }
-        return Token { kind: TokenOperator::EOF, value: None }
+        return Token { kind: TokenOperator::Eof, value: None }
     }
 
     pub fn set_command(&mut self, command: String) {
