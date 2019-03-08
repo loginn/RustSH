@@ -1,0 +1,4 @@
+
+fn single_right() {
+
+}

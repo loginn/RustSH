@@ -64,7 +64,11 @@ impl Parser {
     }
 
     pub fn check_token(&mut self) -> bool {
-        return self.current_token.kind == TokenOperator::Semicolon || self.current_token.kind == TokenOperator::And || self.current_token.kind == TokenOperator::Or;
+        return self.current_token.kind == TokenOperator::Semicolon
+            || self.current_token.kind == TokenOperator::And
+            || self.current_token.kind == TokenOperator::Or
+            || self.current_token.kind == TokenOperator::SingleRight
+            || self.current_token.kind == TokenOperator::SingleLeft;
     }
 
     pub fn expr(&mut self) -> Box<ASTNode> {
@@ -82,6 +86,10 @@ impl Parser {
                 Parser::pass(self.eat(TokenOperator::And));
             } else if tok.kind == TokenOperator::Or {
                 Parser::pass(self.eat(TokenOperator::Or));
+            } else if tok.kind == TokenOperator::SingleRight {
+                Parser::pass(self.eat(TokenOperator::SingleRight));
+            } else if tok.kind == TokenOperator::SingleLeft {
+                Parser::pass(self.eat(TokenOperator::SingleLeft));
             }
 
             node = Box::new(BinOp {
