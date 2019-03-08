@@ -87,7 +87,9 @@ impl Lexer {
                 continue;
             }
 
-            if c == ';' {
+            if c.is_alphabetic() || "/.".contains(c) {
+                return self.command();
+            } else if c == ';' {
                 self.advance();
                 return Token { kind: TokenOperator::Semicolon, value: None }
             } else if c == '|' && self.peek_check(c) {
