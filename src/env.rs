@@ -1,15 +1,23 @@
 use std::env;
 use std::io;
-use std::io::Write;
+use std::io::{Write};
 use command_handler::CommandResult;
 
 pub fn env() -> CommandResult
 {
-    let environement = env::vars();
-
-    for x in environement {
-        print!("{}={}\n", x.0, x.1);
-    }
+    let _environement = env::vars();
+//    match stdout {
+//        None => {
+//            for x in environement {
+//                print!("{}={}\n", x.0, x.1);
+//            }
+//        },
+//        Some(mut stdout) => {
+//            for x in environement {
+//                stdout.write_all(format!("{}={}\n", x.0, x.1).as_bytes());
+//            }
+//        }
+//    }
     return CommandResult { child: None, status: 0 };
 }
 

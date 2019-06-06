@@ -115,7 +115,7 @@ impl Lexer {
                 self.advance();
                 return Token { kind: TokenOperator::Pipe, value: None}
             } else {
-                panic!("Unknown token {}", c)
+                self.advance();
             }
         }
         return Token { kind: TokenOperator::Eof, value: None }

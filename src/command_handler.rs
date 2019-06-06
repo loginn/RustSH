@@ -1,8 +1,8 @@
 extern crate regex;
-use std::process::Command;
+use std::process::Child;
 
 #[derive(Debug)]
 pub struct CommandResult {
-    pub child: Option<Command>,
+    pub child: Option<Child>,
     pub status: i32,
 }

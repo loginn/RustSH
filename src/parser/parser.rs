@@ -33,9 +33,9 @@ impl Parser {
         return Err("Token kind does not match expected type")
     }
 
-    fn factor(&mut self) -> Box<ASTNode> {
+    fn factor(&mut self) -> Box<dyn ASTNode> {
         let tok = self.current_token.clone();
-        let result: Box<ASTNode> = match tok.kind {
+        let result: Box<dyn ASTNode> = match tok.kind {
             TokenOperator::Cmd => {
                 match self.eat(TokenOperator::Cmd) {
                     Ok(cmd) => {
@@ -69,15 +69,16 @@ impl Parser {
             || self.current_token.kind == TokenOperator::Or
             || self.current_token.kind == TokenOperator::SingleRight
             || self.current_token.kind == TokenOperator::DoubleRight
-            || self.current_token.kind == TokenOperator::SingleLeft;
+            || self.current_token.kind == TokenOperator::SingleLeft
+            || self.current_token.kind == TokenOperator::Pipe;
     }
 
-    pub fn expr(&mut self) -> Box<ASTNode> {
+    pub fn expr(&mut self) -> Box<dyn ASTNode> {
         if self.current_token.kind == TokenOperator::Start {
             Parser::pass(self.eat(TokenOperator::Start));
         }
 
-        let mut node: Box<ASTNode> = self.factor();
+        let mut node: Box<dyn ASTNode> = self.factor();
 
         while self.check_token() {
             let tok = self.current_token.clone();
@@ -93,6 +94,8 @@ impl Parser {
                 Parser::pass(self.eat(TokenOperator::DoubleRight));
             } else if tok.kind == TokenOperator::SingleLeft {
                 Parser::pass(self.eat(TokenOperator::SingleLeft));
+            } else if tok.kind == TokenOperator::Pipe {
+                Parser::pass(self.eat(TokenOperator::Pipe));
             }
 
             node = Box::new(BinOp {

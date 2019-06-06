@@ -2,6 +2,7 @@
 extern crate downcast_rs;
 extern crate signal_hook;
 extern crate regex;
+extern crate core;
 
 mod cd;
 mod launch_bin;
@@ -34,7 +35,7 @@ fn print_prompt() {
 
 fn main_loop() {
     let mut command = String::new();
-    let mut interpreter: Interpreter = Interpreter { parser: Parser::new() };
+    let mut interpreter: Interpreter = Interpreter { parser: Parser::new(), current_result: None };
 
     while std::io::stdin().read_line(&mut command).unwrap() > 0 {
         let cmd = command.clone();
@@ -44,7 +45,7 @@ fn main_loop() {
     }
 }
 
-fn main() -> Result<(), Box<Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     let signals = Signals::new(&[signal_hook::SIGINT])?;
 
     thread::spawn(move || {

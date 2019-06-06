@@ -1,5 +1,5 @@
 use command_handler::{CommandResult};
-use std::process::{Stdio};
+use std::process::{Stdio, Child};
 use launch_bin::launch_bin;
 use cd::cd;
 use env::env;
@@ -14,22 +14,21 @@ use std::cmp::max;
 use std::fs::{File, OpenOptions};
 
 pub trait NodeVisitor {
-    fn visit(&self, node: &Box<ASTNode>, stdin: Option<Stdio>, stdout: Option<Stdio>) -> CommandResult;
+    fn visit(&mut self, node: &Box<dyn ASTNode>, stdin: Option<Stdio>, stdout: Option<Stdio>);
 }
 
 
 pub struct Interpreter {
-    pub parser: Parser
+    pub parser: Parser,
+    pub current_result: Option<CommandResult>
 }
 
 impl NodeVisitor for Interpreter {
-    fn visit(&self, node: &Box<ASTNode>, stdin: Option<Stdio>, stdout: Option<Stdio>) -> CommandResult {
+    fn visit(&mut self, node: &Box<dyn ASTNode>, stdin: Option<Stdio>, stdout: Option<Stdio>) {
         if node.type_of() == "BinOp" {
-            return self.visit_binop(&node.downcast_ref::<BinOp>().unwrap())
-        } else if node.type_of() == "Eof" {
-            return CommandResult { child: None, status: 0 }
+            self.visit_binop(&node.downcast_ref::<BinOp>().unwrap());
         } else {
-            return self.visit_command(&node.downcast_ref::<Command>().unwrap(), stdin, stdout);
+            self.visit_command(&node.downcast_ref::<Command>().unwrap(), stdin, stdout);
         }
     }
 }
@@ -39,7 +38,7 @@ impl Interpreter {
         self.parser.set_command(command);
     }
 
-    fn visit_command(&self, node: &Command, stdin: Option<Stdio>, stdout: Option<Stdio>) -> CommandResult {
+    fn visit_command(&mut self, node: &Command, stdin: Option<Stdio>, stdout: Option<Stdio>) {
         let mut cmd: Vec<String> = node.value.clone().split(' ').map(|x: &str| x.to_string()).collect();
 
         let result = match cmd[0].as_str() {
@@ -47,78 +46,122 @@ impl Interpreter {
             "env"       => env(),
             "setenv"    => setenv(&mut cmd),
             "unsetenv"  => unsetenv(&mut cmd),
-            _           => launch_bin(&mut cmd, stdin, stdout)
+            _           => CommandResult {child : launch_bin(&mut cmd, stdin, stdout), status: 0}
         };
-        return result
+        self.current_result = Some(result)
     }
 
-    fn binop_semi(&self, n: &BinOp) -> CommandResult {
+    fn get_child(&mut self) -> Option<&mut Child> {
+        match &mut self.current_result {
+            Some(cr) => {
+                match &mut cr.child {
+                    Some(ch) => {
+                        Some(ch)
+                    },
+                    None => {
+                        None
+                    }
+                }
+            },
+            None => {
+                None
+            }
+        }
+    }
+
+    fn wait_for_child(&mut self) -> i32 {
+        match self.get_child() {
+            Some(ch) => {
+                match ch.wait() {
+                    Ok(status) => {
+                        return status.code().unwrap()
+                    },
+                    Err(_) => 1
+                }
+            },
+            None => {
+                1
+            }
+        }
+    }
+
+//    fn binop_pipe(&mut self, n: &BinOp) {
+//        self.visit(&n.left, None, Some(Stdio::piped()));
+//        let out = child.wait_with_output();
+//        self.visit(&n.right, Some(Stdio::piped()), None);
+//    }
+
+
+    fn binop_semi(&mut self, n: &BinOp) {
         self.visit(&n.left, None, None);
-        return self.visit(&n.right, None, None);
-
+        self.wait_for_child();
+        self.visit(&n.right, None, None);
+        self.wait_for_child();
     }
 
-    fn binop_and(&self, n: &BinOp) -> CommandResult {
-        let cr1 = self.visit(&n.left, None, None);
-        if cr1.status == 0 {
-            let cr2 = self.visit(&n.right, None, None);
-            CommandResult { child: None, status: max(cr1.status, cr2.status) }
+    fn binop_and(&mut self, n: &BinOp) {
+        self.visit(&n.left, None, None);
+        let status_1 = self.wait_for_child();
+
+        if status_1 == 0 {
+            self.visit(&n.right, None, None);
+            let status_2 = self.wait_for_child();
+            self.current_result = Some(CommandResult { child: None, status: max(status_1, status_2) });
         } else {
-            CommandResult { child: None, status: cr1.status }
+            self.current_result = Some(CommandResult { child: None, status: status_1 });
         }
     }
 
-    fn binop_or(&self, n: &BinOp) -> CommandResult {
-        let cr1 = self.visit(&n.left, None, None);
-        if cr1.status != 0 {
-            let cr2 = self.visit(&n.right, None, None);
-            CommandResult { child: None, status: max(cr1.status, cr2.status) }
-        } else {
-            CommandResult { child: None, status: cr1.status }
+    fn binop_or(&mut self, n: &BinOp) {
+        self.visit(&n.left, None, None);
+        let status_1 = self.wait_for_child();
+        if status_1 != 0 {
+            self.visit(&n.right, None, None);
+            self.wait_for_child();
         }
     }
 
-    fn binop_single_right(&self, n: &BinOp) -> CommandResult {
+    fn binop_single_right(&mut self, n: &BinOp) {
         let path = &n.right.downcast_ref::<Command>().unwrap().value;
         match  File::create(&path) {
             Ok(f) => {
-                return self.visit(&n.left, None, Some(f.into()));
+                self.visit(&n.left, None, Some(f.into()));
+                self.wait_for_child();
             },
             Err(_) => {
-                println!("RustSH : file not found : {}", path);
+                println!("RustSH : File error : {}", path);
             },
         };
-        CommandResult { child: None, status: 1 }
     }
 
-    fn binop_double_right(&self, n: &BinOp) -> CommandResult {
+    fn binop_double_right(&mut self, n: &BinOp) {
         let path = &n.right.downcast_ref::<Command>().unwrap().value;
         match  OpenOptions::new().append(true).create(true).open(&path) {
             Ok(f) => {
-                return self.visit(&n.left, None, Some(f.into()));
+                self.visit(&n.left, None, Some(f.into()));
+                self.wait_for_child();
             },
             Err(_) => {
                 println!("RustSH : Could not open file : {}", path);
             },
         };
-        CommandResult { child: None, status: 1 }
     }
 
-    fn binop_single_left(&self, n: &BinOp) -> CommandResult {
+    fn binop_single_left(&mut self, n: &BinOp) {
         let path = &n.right.downcast_ref::<Command>().unwrap().value;
 
         match File::open(&path) {
             Ok(f) => {
-                return self.visit(&n.left, Some(f.into()), None);
+                self.visit(&n.left, Some(f.into()), None);
+                self.wait_for_child();
             },
             Err(_) => {
                 println!("RustSH: {} : file not found", path);
             },
         };
-        CommandResult { child: None, status: 1 }
     }
 
-    fn visit_binop(&self, node: &BinOp) -> CommandResult {
+    fn visit_binop(&mut self, node: &BinOp) {
         let n = *&node;
         match n.token.kind {
             TokenOperator::Semicolon => { self.binop_semi(node) }
@@ -127,13 +170,40 @@ impl Interpreter {
             TokenOperator::SingleRight => { self.binop_single_right(&node) }
             TokenOperator::DoubleRight => { self.binop_double_right(&node) }
             TokenOperator::SingleLeft => { self.binop_single_left(&node) }
+//            TokenOperator::Pipe => { self.binop_pipe(&node) }
             _ => {unimplemented!()}
         }
     }
+
+//    fn dbug_tree(&self, node: &Box<dyn ASTNode>) {
+//        if node.type_of() == "BinOp" {
+//            let n: &BinOp = &node.downcast_ref::<BinOp>().unwrap();
+//            println!("{:?}", n.token);
+//            self.dbug_tree(&n.left);
+//            self.dbug_tree(&n.right);
+//        } else if node.type_of() == "Eof" {
+//            println!("EOF")
+//        } else {
+//            let n: &Command = &node.downcast_ref::<Command>().unwrap();
+//            println!("command {:?}", n.value);
+//        }
+//    }
 
     pub fn interpret(&mut self, command: String) {
         self.set_command(command);
         let node = self.parser.expr();
         self.visit(&node, None, None);
+
+        match &mut self.current_result {
+            Some(cr) => {
+                match &mut cr.child {
+                    Some(_) => {
+                        self.wait_for_child();
+                    },
+                    None => {}
+                }
+            },
+            None => {}
+        }
     }
 }

@@ -1,6 +1,4 @@
-use std::process::{Command, Stdio};
-use command_handler::{CommandResult};
-use std::error::Error;
+use std::process::{Command, Stdio, Child};
 
 
 fn add_args(process: &mut Command, command_vector: &Vec<String>) {
@@ -11,56 +9,39 @@ fn add_args(process: &mut Command, command_vector: &Vec<String>) {
     }
 }
 
-fn create_process(command_vector: &mut Vec<String>, stdin: Option<Stdio>, stdout: Option<Stdio>) -> Option<Command> {
+fn create_process(command_vector: &mut Vec<String>, stdin: Option<Stdio>, stdout: Option<Stdio>) -> Command {
     let mut process = Command::new(&command_vector[0].trim());
     match stdin {
-        None => {},
-        Some(stdin) => { process.stdin(stdin);},
+        Some(sin) => {
+            process.stdin(sin);
+        },
+        None => {}
     }
 
     match stdout {
-        None => {},
-        Some(stdout) => { process.stdout(stdout);},
+        Some(sout) => {
+            process.stdout(sout);
+        },
+        None => {}
     }
 
     add_args(&mut process, command_vector);
-    return Some(process)
+    return process
 }
 
-fn create_child_process(command_vector: &mut Vec<String>, stdin: Option<Stdio>, stdout: Option<Stdio>) -> Option<Command> {
-    return create_process(command_vector, stdin, stdout)
-}
-
-fn run_child(child: &mut Command, command_vector: &Vec<String>) -> i32 {
-    let status : i32 = match child.spawn() {
-        Err(_) => {
-            println!("RustSH: {} : command not found", command_vector[0]);
-            1
+fn spawn_child(child: &mut Command, command_vector: &Vec<String>) -> Option<Child> {
+    let spawn : Child = match child.spawn() {
+        Err(e) => {
+            eprintln!("RustSH: {} : command not found\n error : {}", command_vector[0], e);
+            return None;
         },
-        Ok(mut spawn) => {
-            match spawn.wait() {
-                Err(e) => {
-                    println!("RustSH: {}", e.description());
-                    1
-                },
-                Ok(wait) => {
-                    match wait.code() {
-                        None => 1,
-                        Some(code) => code
-                    }
-                }
-            }
-        }
+        Ok(spawn) => { spawn }
     };
-    return status
+    return Some(spawn);
 }
 
-pub fn launch_bin(command_vector: &mut Vec<String>, stdin: Option<Stdio>, stdout: Option<Stdio>) -> CommandResult {
-    let mut child = match create_child_process(command_vector, stdin, stdout) {
-        None => { return CommandResult {child: None, status: 1}; },
-        Some(child) => child
-    };
+pub fn launch_bin(command_vector: &mut Vec<String>, stdin: Option<Stdio>, stdout: Option<Stdio>) -> Option<Child> {
+    let mut process = create_process(command_vector, stdin, stdout);
+    return spawn_child(&mut process, command_vector)
 
-    let status: i32 = run_child(&mut child, command_vector);
-    return CommandResult { child: Some(child), status }
 }

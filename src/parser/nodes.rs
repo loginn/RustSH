@@ -7,8 +7,8 @@ pub trait ASTNode: Downcast {
 impl_downcast!(ASTNode);
 
 pub struct BinOp {
-    pub left: Box<ASTNode>,
-    pub right: Box<ASTNode>,
+    pub left: Box<dyn ASTNode>,
+    pub right: Box<dyn ASTNode>,
     pub token: Token
 }
 
