@@ -35,7 +35,7 @@ fn print_prompt() {
 
 fn main_loop() {
     let mut command = String::new();
-    let mut interpreter: Interpreter = Interpreter { parser: Parser::new(), current_result: None };
+    let mut interpreter: Interpreter = Interpreter { parser: Parser::new() };
 
     while std::io::stdin().read_line(&mut command).unwrap() > 0 {
         let cmd = command.clone();

@@ -18,7 +18,7 @@ pub fn env() -> CommandResult
 //            }
 //        }
 //    }
-    return CommandResult { child: None, status: 0 };
+    return CommandResult { child: None, output: None, status: Some(0) };
 }
 
 pub fn setenv(command_vector : &mut Vec<String>) -> CommandResult
@@ -27,15 +27,15 @@ pub fn setenv(command_vector : &mut Vec<String>) -> CommandResult
         let values = command_vector[1].split("=").collect::<Vec<&str>>();
         if values.len() > 1 {
             env::set_var(values[0], values[1]);
-            return CommandResult { child: None, status: 0 };
+            return CommandResult { child: None, output: None, status: Some(0) };
         }
-        return CommandResult { child: None, status: 1 };
+        return CommandResult { child: None, output: None, status: Some(1) };
     } else {
         match writeln!(&mut io::stderr(), "Invalid pair") {
             Err(e)  => println!("{}", e),
             _       => {}
         }
-        return CommandResult { child: None, status: 1 };
+        return CommandResult { child: None, output: None, status: Some(1) };
     }
 }
 
@@ -43,12 +43,12 @@ pub fn unsetenv(command_vector : &mut Vec<String>) -> CommandResult
 {
     if command_vector.len() > 1 {
         env::remove_var(command_vector[1].trim());
-        return CommandResult { child: None, status: 0 };
+        return CommandResult { child: None, output: None, status: Some(0) };
         } else {
             match writeln!(&mut io::stderr(), "No input var") {
                 Err(e)  => println!("{}", e),
                 _       => {}
         }
-        return CommandResult { child: None, status: 1 };
+        return CommandResult { child: None, output: None, status: Some(1) };
     }
 }

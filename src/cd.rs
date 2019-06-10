@@ -6,7 +6,7 @@ use command_handler::CommandResult;
 
 fn change_directory(path: &path::PathBuf) -> i32 {
     match env::set_current_dir(path) {
-        Err(err) => {println!("Error : {}, {:?}", err, path); return 1},
+        Err(err) => { println!("Error : {}, {:?}", err, path); 1 },
         Ok(_) => {return 0}
     }
 }
@@ -35,19 +35,19 @@ fn build_new_path(command_path: &str) -> Option<path::PathBuf> {
 pub fn cd (command_vector: &Vec<String> ) -> CommandResult {
     if command_vector.len() == 2 {
         match build_new_path(&command_vector[1]) {
-            Some(n) => return CommandResult { child: None, status: change_directory(&n) },
-            None => return CommandResult { child: None, status: 1 }
+            Some(n) => return CommandResult { child: None, output: None, status: Some(change_directory(&n)) },
+            None => return CommandResult { child: None, output: None, status: Some(1) }
         }
     } else if command_vector.len() == 1 {
         match dirs::home_dir() {
-            Some(n) => CommandResult { child: None, status: change_directory(&n) },
+            Some(n) => CommandResult { child: None, output: None, status: Some(change_directory(&n)) },
             None => {
                 println!("No known home directory");
-                return CommandResult { child: None, status: 1 }
+                return CommandResult { child: None, output: None, status: Some(1) }
             }
         }
     } else {
         println!("Error : Invalid path");
-        return CommandResult { child: None, status: 1 }
+        return CommandResult { child: None, output: None, status: Some(1) }
     }
 }
