@@ -94,10 +94,10 @@ impl Interpreter {
                 }
             },
             Some(out1) => {
-                let mut pipe2 = self.visit(&n.right, Some(Stdio::piped()), Some(Stdio::piped()));
-                pipe2.child.as_mut().unwrap().stdin.as_mut().unwrap().write_all(out1.stdout.as_slice()).ok();
+                let mut pipe = self.visit(&n.right, Some(Stdio::piped()), Some(Stdio::piped()));
+                pipe.child.as_mut().unwrap().stdin.as_mut().unwrap().write_all(out1.stdout.as_slice()).ok();
 
-                let output = self.wait_for_child(pipe2);
+                let output = self.wait_for_child(pipe);
 
                 CommandResult {
                     child: None,
@@ -106,7 +106,6 @@ impl Interpreter {
                 }
             }
         };
-//        print!("{}", std::str::from_utf8(cr.output.as_ref().unwrap().stdout.as_slice()).ok().unwrap());
         return cr;
     }
 
@@ -122,7 +121,7 @@ impl Interpreter {
         let r = self.visit(&n.left, None, None);
         let output_1 = self.wait_for_child(r).unwrap();
         let status_1 = output_1.status.success();
-        
+
 
         if status_1 {
             let r = self.visit(&n.right, None, None);
@@ -154,10 +153,24 @@ impl Interpreter {
     fn binop_single_right(&mut self, n: &BinOp) -> CommandResult {
         let path = &n.right.downcast_ref::<Command>().unwrap().value;
         match  File::create(&path) {
-            Ok(f) => {
-                let r = self.visit(&n.left, None, Some(f.into()));
-                let output = self.wait_for_child(r);
-                CommandResult { child: None, output, status: None }
+            Ok(mut f) => {
+                let r = self.visit(&n.left, None, None);
+                match r.output {
+                    Some(out) => {
+                        f.write_all(out.stdout.as_ref()).ok();
+                    },
+                    None => {
+                        let output = self.wait_for_child(r);
+                        match output {
+                            Some(out) => {
+                                f.write_all(out.stdout.as_ref()).ok();
+                            },
+                            None => {}
+                        }
+                    }
+                }
+
+                CommandResult { child: None, output: None, status: None }
             },
             Err(_) => {
                 println!("RustSH : File error : {}", path);
@@ -170,10 +183,24 @@ impl Interpreter {
     fn binop_double_right(&mut self, n: &BinOp) -> CommandResult {
         let path = &n.right.downcast_ref::<Command>().unwrap().value;
         match  OpenOptions::new().append(true).create(true).open(&path) {
-            Ok(f) => {
-                let r = self.visit(&n.left, None, Some(f.into()));
-                let output = self.wait_for_child(r);
-                CommandResult { child: None, output, status: None }
+            Ok(mut f) => {
+                let r = self.visit(&n.left, None, None);
+                match r.output {
+                    Some(out) => {
+                        f.write_all(out.stdout.as_ref()).ok();
+                    },
+                    None => {
+                        let output = self.wait_for_child(r);
+                        match output {
+                            Some(out) => {
+                                f.write_all(out.stdout.as_ref()).ok();
+                            },
+                            None => {}
+                        }
+                    }
+                }
+
+                CommandResult { child: None, output: None, status: None }
             },
             Err(_) => {
                 println!("RustSH : Could not open file : {}", path);
@@ -235,9 +262,25 @@ impl Interpreter {
 
         match &mut result.child {
             Some(_) => {
-                self.wait_for_child(result);
+                match self.wait_for_child(result) {
+                    Some(out) => {
+                        if !out.stdout.is_empty() {
+                            println!("{}", std::str::from_utf8(out.stdout.as_slice()).ok().unwrap());
+                        }
+                    },
+                    None => {}
+                }
             },
-            None => {}
+            None => {
+                match result.output {
+                    Some(out) => {
+                        if !out.stdout.is_empty() {
+                            print!("{}", std::str::from_utf8(out.stdout.as_slice()).ok().unwrap());
+                        }
+                    },
+                    None => {}
+                }
+            }
         }
     }
 }
