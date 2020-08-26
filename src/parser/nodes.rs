@@ -1,6 +1,7 @@
 use parser::lexer::Token;
 use downcast_rs::Downcast;
 
+
 pub trait ASTNode: Downcast {
     fn type_of(&self) -> &'static str;
 }

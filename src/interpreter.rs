@@ -25,9 +25,25 @@ pub struct Interpreter {
 impl NodeVisitor for Interpreter {
     fn visit(&mut self, node: &Box<dyn ASTNode>, stdin: Option<Stdio>, stdout: Option<Stdio>) -> CommandResult {
         if node.type_of() == "BinOp" {
-            self.visit_binop(&node.downcast_ref::<BinOp>().unwrap())
+            match &node.downcast_ref::<BinOp>() {
+                Some(n) => {
+                    println!("{:?}", n.token.kind);
+                    self.visit_binop(n, stdin, stdout)
+                },
+                None => {
+                    panic!("UNKNOWN TOKEN")
+                }
+            }
         } else {
-            self.visit_command(&node.downcast_ref::<Command>().unwrap(), stdin, stdout)
+            match &node.downcast_ref::<Command>() {
+                Some(n) => {
+                    println!("{:?}", n.value);
+                    self.visit_command(n, stdin, stdout)
+                },
+                None => {
+                    panic!("FAILED TO DOWNCAST TOKEN")
+                }
+            }
         }
     }
 }
@@ -77,15 +93,16 @@ impl Interpreter {
         }
     }
 
-    fn binop_pipe(&mut self, n: &BinOp) -> CommandResult {
-        let pipe1 = self.visit(&n.left, None, Some(Stdio::piped()));
-        let cr = match pipe1.output {
+    fn binop_pipe(&mut self, n: &BinOp, stdin: Option<Stdio>, stdout: Option<Stdio>) -> CommandResult {
+        let outpipe = Some(Stdio::piped());
+        let com1 = self.visit(&n.left, stdin, outpipe);
+        let cr = match com1.output {
             None => {
-                let out1 = self.wait_for_child(pipe1);
-                let mut pipe2 = self.visit(&n.right, Some(Stdio::piped()), Some(Stdio::piped()));
-                pipe2.child.as_mut().unwrap().stdin.as_mut().unwrap().write_all(out1.unwrap().stdout.as_slice()).ok();
+                let out1 = self.wait_for_child(com1);
+                let mut com2 = self.visit(&n.right, Some(Stdio::piped()), stdout);
+                com2.child.as_mut().unwrap().stdin.as_mut().unwrap().write_all(out1.unwrap().stdout.as_slice()).ok();
 
-                let output = self.wait_for_child(pipe2);
+                let output = self.wait_for_child(com2);
 
                 CommandResult {
                     child: None,
@@ -94,7 +111,7 @@ impl Interpreter {
                 }
             },
             Some(out1) => {
-                let mut pipe = self.visit(&n.right, Some(Stdio::piped()), Some(Stdio::piped()));
+                let mut pipe = self.visit(&n.right, Some(Stdio::piped()), stdout);
                 pipe.child.as_mut().unwrap().stdin.as_mut().unwrap().write_all(out1.stdout.as_slice()).ok();
 
                 let output = self.wait_for_child(pipe);
@@ -110,14 +127,14 @@ impl Interpreter {
     }
 
 
-    fn binop_semi(&mut self, n: &BinOp) -> CommandResult {
+    fn binop_semi(&mut self, n: &BinOp, _stdin: Option<Stdio>, _stdout: Option<Stdio>) -> CommandResult {
         let r = self.visit(&n.left, None, None);
         self.wait_for_child(r);
         let r = self.visit(&n.right, None, None);
         CommandResult{child: None, output: Some(self.wait_for_child(r).unwrap()), status: None}
     }
 
-    fn binop_and(&mut self, n: &BinOp) -> CommandResult {
+    fn binop_and(&mut self, n: &BinOp, _stdin: Option<Stdio>, _stdout: Option<Stdio>) -> CommandResult {
         let r = self.visit(&n.left, None, None);
         let output_1 = self.wait_for_child(r).unwrap();
         let status_1 = output_1.status.success();
@@ -137,7 +154,7 @@ impl Interpreter {
         }
     }
 
-    fn binop_or(&mut self, n: &BinOp) -> CommandResult {
+    fn binop_or(&mut self, n: &BinOp, _stdin: Option<Stdio>, _stdout: Option<Stdio>) -> CommandResult {
         let r = self.visit(&n.left, None, None);
         let output_1 = self.wait_for_child(r).unwrap();
         let status_1 = output_1.status.code().unwrap();
@@ -150,26 +167,12 @@ impl Interpreter {
         return CommandResult { child: None, output: Some(output_1), status: None }
     }
 
-    fn binop_single_right(&mut self, n: &BinOp) -> CommandResult {
+    fn binop_single_right(&mut self, n: &BinOp, _stdin: Option<Stdio>, _stdout: Option<Stdio>) -> CommandResult {
         let path = &n.right.downcast_ref::<Command>().unwrap().value;
         match  File::create(&path) {
-            Ok(mut f) => {
-                let r = self.visit(&n.left, None, None);
-                match r.output {
-                    Some(out) => {
-                        f.write_all(out.stdout.as_ref()).ok();
-                    },
-                    None => {
-                        let output = self.wait_for_child(r);
-                        match output {
-                            Some(out) => {
-                                f.write_all(out.stdout.as_ref()).ok();
-                            },
-                            None => {}
-                        }
-                    }
-                }
-
+            Ok( f) => {
+                let r = self.visit(&n.left, None, Some(Stdio::from(f)));
+                self.wait_for_child(r);
                 CommandResult { child: None, output: None, status: None }
             },
             Err(_) => {
@@ -180,26 +183,12 @@ impl Interpreter {
         CommandResult { child: None, output: None, status: None }
     }
 
-    fn binop_double_right(&mut self, n: &BinOp) -> CommandResult {
+    fn binop_double_right(&mut self, n: &BinOp, _stdin: Option<Stdio>, _stdout: Option<Stdio>) -> CommandResult {
         let path = &n.right.downcast_ref::<Command>().unwrap().value;
         match  OpenOptions::new().append(true).create(true).open(&path) {
-            Ok(mut f) => {
-                let r = self.visit(&n.left, None, None);
-                match r.output {
-                    Some(out) => {
-                        f.write_all(out.stdout.as_ref()).ok();
-                    },
-                    None => {
-                        let output = self.wait_for_child(r);
-                        match output {
-                            Some(out) => {
-                                f.write_all(out.stdout.as_ref()).ok();
-                            },
-                            None => {}
-                        }
-                    }
-                }
-
+            Ok(f) => {
+                let r = self.visit(&n.left, None, Some(Stdio::from(f)));
+                self.wait_for_child(r);
                 CommandResult { child: None, output: None, status: None }
             },
             Err(_) => {
@@ -210,7 +199,7 @@ impl Interpreter {
         CommandResult { child: None, output: None, status: None}
     }
 
-    fn binop_single_left(&mut self, n: &BinOp) -> CommandResult {
+    fn binop_single_left(&mut self, n: &BinOp, _stdin: Option<Stdio>, _stdout: Option<Stdio>) -> CommandResult {
         let path = &n.right.downcast_ref::<Command>().unwrap().value;
 
         match File::open(&path) {
@@ -227,16 +216,16 @@ impl Interpreter {
         CommandResult { child: None, output: None, status: None }
     }
 
-    fn visit_binop(&mut self, node: &BinOp) -> CommandResult {
+    fn visit_binop(&mut self, node: &BinOp, stdin: Option<Stdio>, stdout: Option<Stdio>) -> CommandResult {
         let n = *&node;
         match n.token.kind {
-            TokenOperator::Semicolon => { return self.binop_semi(node) }
-            TokenOperator::And => { return self.binop_and(&node) }
-            TokenOperator::Or => { return self.binop_or(&node) }
-            TokenOperator::SingleRight => { return self.binop_single_right(&node) }
-            TokenOperator::DoubleRight => { return self.binop_double_right(&node) }
-            TokenOperator::SingleLeft => { return self.binop_single_left(&node) }
-            TokenOperator::Pipe => { self.binop_pipe(&node) }
+            TokenOperator::Semicolon => { return self.binop_semi(node, stdin, stdout) }
+            TokenOperator::And => { return self.binop_and(&node, stdin, stdout) }
+            TokenOperator::Or => { return self.binop_or(&node, stdin, stdout) }
+            TokenOperator::SingleRight => { return self.binop_single_right(&node, stdin, stdout) }
+            TokenOperator::DoubleRight => { return self.binop_double_right(&node, stdin, stdout) }
+            TokenOperator::SingleLeft => { return self.binop_single_left(&node, stdin, stdout) }
+            TokenOperator::Pipe => { self.binop_pipe(&node, stdin, stdout) }
             _ => {unimplemented!()}
         }
     }
