@@ -27,7 +27,7 @@ impl NodeVisitor for Interpreter {
         if node.type_of() == "BinOp" {
             match &node.downcast_ref::<BinOp>() {
                 Some(n) => {
-                    println!("{:?}", n.token.kind);
+                    // println!("{:?}", n.token.kind);
                     self.visit_binop(n, stdin, stdout)
                 },
                 None => {
@@ -37,7 +37,7 @@ impl NodeVisitor for Interpreter {
         } else {
             match &node.downcast_ref::<Command>() {
                 Some(n) => {
-                    println!("{:?}", n.value);
+                    // println!("{:?}", n.value);
                     self.visit_command(n, stdin, stdout)
                 },
                 None => {
